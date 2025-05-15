@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
 
-# Загружаем переменные из кастомного .env
+# Загружаем переменные из tokens.env
 load_dotenv("tokens.env")
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -69,7 +69,20 @@ def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print("Ошибка:", e)
         update.message.reply_text("❌ Ошибка при отправке данных в Notion.")
 
+# 🟢 Добавляем фиктивный HTTP-сервер, чтобы Render не жаловался на отсутствие порта
+import threading
+import http.server
+import socketserver
+
+def keep_render_happy():
+    PORT = 10000
+    Handler = http.server.SimpleHTTPRequestHandler
+    with socketserver.TCPServer(("", PORT), Handler) as httpd:
+        print(f"Fake server running on port {PORT}")
+        httpd.serve_forever()
+
 if __name__ == "__main__":
+    threading.Thread(target=keep_render_happy, daemon=True).start()
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     print("🤖 Бот запущен. Ожидает сообщения...")
