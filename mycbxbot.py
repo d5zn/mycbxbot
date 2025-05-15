@@ -1,16 +1,19 @@
 import os
 import requests
+import threading
+import http.server
+import socketserver
+import random
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
 
-# Загружаем переменные из tokens.env
+# Загрузка переменных из tokens.env (локально) или из Render переменных окружения
 load_dotenv("tokens.env")
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 NOTION_TOKEN = os.getenv("NOTION_TOKEN")
 DATABASE_ID = os.getenv("DATABASE_ID")
-
 NOTION_VERSION = "2022-06-28"
 
 def parse_message(text):
@@ -66,25 +69,28 @@ def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         send_to_notion(data)
         update.message.reply_text("✅ Данные отправлены в Notion!")
     except Exception as e:
-        print("Ошибка:", e)
-        update.message.reply_text("❌ Ошибка при отправке данных в Notion.")
+        print("Ошибка при отправке в Notion:", e)
+        update.message.reply_text("❌ Ошибка при отправке данных.")
 
-# 🟢 Добавляем фиктивный HTTP-сервер, чтобы Render не жаловался на отсутствие порта
-import threading
-import http.server
-import socketserver
+# ✅ Обработчик ошибок
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+    print("❌ Ошибка в Telegram:", context.error)
 
+# ✅ Фейковый HTTP-сервер, чтобы Render не ругался на порты
 def keep_render_happy():
-    PORT = 10000
+    PORT = random.randint(10000, 60000)  # используем случайный порт
     Handler = http.server.SimpleHTTPRequestHandler
-    with socketserver.TCPServer(("", PORT), Handler) as httpd:
-        print(f"Fake server running on port {PORT}")
-        httpd.serve_forever()
-
-# ... все импорты, обработчики и keep_render_happy выше
+    try:
+        with socketserver.TCPServer(("", PORT), Handler) as httpd:
+            print(f"Fake server running on port {PORT}")
+            httpd.serve_forever()
+    except OSError as e:
+        print(f"⚠️ Ошибка запуска fake-сервера: {e}")
 
 if __name__ == "__main__":
+    print("🚀 Запуск Telegram-бота...")
     threading.Thread(target=keep_render_happy, daemon=True).start()
+
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_error_handler(error_handler)
