@@ -1,7 +1,9 @@
 import os
 from notion_client import Client
 
-NOTION_TOKEN = os.environ["NOTION_TOKEN"]
+NOTION_TOKEN = os.getenv("NOTION_TOKEN")
+if not NOTION_TOKEN:
+    raise ValueError("Переменная окружения NOTION_TOKEN не задана")
 DATABASE_ID = os.environ["NOTION_DB_ID"]
 
 notion = Client(auth=NOTION_TOKEN)
