@@ -4,7 +4,6 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, Con
 from notion import add_entry_to_notion
 
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
-
 user_state = {}
 
 def setup_bot():
@@ -15,7 +14,7 @@ def setup_bot():
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_state[update.effective_user.id] = {}
-    await update.message.reply_text("Привет! Введи данные в формате: Name, Rating, Brand, ...")
+    await update.message.reply_text("Привет! Введи 12 значений, разделённых запятыми.")
 
 async def handle_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -43,7 +42,7 @@ async def handle_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
         }
 
         add_entry_to_notion(data)
-        await update.message.reply_text("Запись добавлена в Notion!")
+        await update.message.reply_text("✅ Запись добавлена в Notion!")
 
     except Exception as e:
         await update.message.reply_text(f"Ошибка: {str(e)}")
