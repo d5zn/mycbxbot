@@ -1,6 +1,15 @@
 import os
 from notion_client import Client
 
+def get_notion_client():
+    notion_token = os.getenv("NOTION_TOKEN")
+    if not notion_token:
+        raise ValueError("NOTION_TOKEN не задан")
+    return Client(auth=notion_token)
+
+def add_entry_to_notion(data):
+    notion = get_notion_client()
+
 NOTION_TOKEN = os.getenv("NOTION_TOKEN")
 if not NOTION_TOKEN:
     raise ValueError("Переменная окружения NOTION_TOKEN не задана")
