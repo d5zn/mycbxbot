@@ -1,5 +1,5 @@
 import os
-from telegram import Update
+from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -13,12 +13,7 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 if not TELEGRAM_TOKEN:
     raise ValueError("Переменная окружения TELEGRAM_TOKEN не задана")
 
-def setup_bot():
-    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_input))
-    return app
-
+# Названия полей и поддержка мультивыбора
 FIELD_ALIASES = {
     "Name": "Name",
     "Rating": "Rating",
@@ -33,18 +28,54 @@ FIELD_ALIASES = {
     "Flavor Notes": "Flavor Notes",
     "Roasted": "Roasted",
 }
-
 MULTI_FIELDS = {"Region", "Varietal", "Flavor Notes"}
 
+# Шаблон для вставки
+TEMPLATE_MESSAGE = """\
+Name: 
+Rating: 
+Brand: 
+Country: 
+Region: 
+Producer: 
+Altitude: 
+Process: 
+Roast Level: 
+Varietal: 
+Flavor Notes: 
+Roasted: 
+"""
+
+def setup_bot():
+    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_input))
+    return app
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [["📋 Вставить шаблон"]]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
     await update.message.reply_text(
-        "Привет! Отправь данные в таком формате (одна строка — одно поле):\n\n"
-        "Name: Test Coffee\nRating: 87\nBrand: Sample Roasters\n...\n\n"
-        "Для множественных значений используй запятую: Flavor Notes: Citrus, Floral"
+        "Привет! Отправь данные в формате:\n\n"
+        "Поле: значение (одна строка — одно поле)\n"
+        "Например:\n"
+        "Name: Ethiopia Yirgacheffe\nRating: 87\n...\n\n"
+        "Или нажми кнопку, чтобы вставить шаблон 👇",
+        reply_markup=reply_markup
     )
 
 async def handle_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
+
+    # Кнопка "Вставить шаблон"
+    if text == "📋 Вставить шаблон":
+        await update.message.reply_text(
+            TEMPLATE_MESSAGE,
+            reply_markup=None  # Убираем клавиатуру
+        )
+        return
+
     lines = text.splitlines()
     data = {}
 
@@ -62,7 +93,11 @@ async def handle_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if field in MULTI_FIELDS:
                 data[field] = [v.strip() for v in value.split(",") if v.strip()]
             elif field == "Rating":
-                data[field] = float(value)
+                try:
+                    data[field] = float(value)
+                except ValueError:
+                    await update.message.reply_text("⚠️ Rating должен быть числом.")
+                    return
             else:
                 data[field] = value
 
