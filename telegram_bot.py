@@ -1,9 +1,18 @@
 import os
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    ContextTypes,
+    filters,
+)
 from notion import add_entry_to_notion
 
-TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+if not TELEGRAM_TOKEN:
+    raise ValueError("Переменная окружения TELEGRAM_TOKEN не задана")
+
 user_state = {}
 
 def setup_bot():
@@ -14,7 +23,11 @@ def setup_bot():
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_state[update.effective_user.id] = {}
-    await update.message.reply_text("Привет! Введи 12 значений, разделённых запятыми.")
+    await update.message.reply_text(
+        "Привет! Введи данные в таком формате:\n"
+        "Name, Rating, Brand, Country, Region1;Region2, Producer, Altitude, "
+        "Process, Roast Level, Varietal1;Varietal2, FlavorNote1;FlavorNote2, Roasted"
+    )
 
 async def handle_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -23,7 +36,7 @@ async def handle_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         fields = [s.strip() for s in text.split(",")]
         if len(fields) < 12:
-            await update.message.reply_text("Недостаточно данных. Нужно 12 полей.")
+            await update.message.reply_text("⚠️ Недостаточно данных. Ожидается 12 полей.")
             return
 
         data = {
@@ -42,7 +55,7 @@ async def handle_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
         }
 
         add_entry_to_notion(data)
-        await update.message.reply_text("✅ Запись добавлена в Notion!")
+        await update.message.reply_text("✅ Запись успешно добавлена в Notion!")
 
     except Exception as e:
-        await update.message.reply_text(f"Ошибка: {str(e)}")
+        await update.message.reply_text(f"❌ Ошибка: {str(e)}")
