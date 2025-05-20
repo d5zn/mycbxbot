@@ -11,7 +11,7 @@ def setup_bot():
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_input))
-    return app, app
+    return app
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_state[update.effective_user.id] = {}
