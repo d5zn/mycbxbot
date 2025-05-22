@@ -4,6 +4,7 @@ from telegram import (
     Update,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
+    ReplyKeyboardMarkup,
 )
 from telegram.ext import (
     ApplicationBuilder,
@@ -64,18 +65,22 @@ def setup_bot():
     return app
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    buttons = [
-        [InlineKeyboardButton("✏️ Заполнить шаблон", url=get_draft_template_url())]
-    ]
-    reply_markup = InlineKeyboardMarkup(buttons)
+    reply_markup = ReplyKeyboardMarkup(
+        [["📋 Вставить шаблон"]],
+        resize_keyboard=True
+    )
 
     await update.message.reply_text(
-        "Привет! Ты можешь отправить данные вручную, либо нажать кнопку ниже — и Telegram сразу вставит шаблон в поле ввода.",
+        "Привет! Нажми кнопку ниже, чтобы вставить шаблон, который ты сможешь отредактировать и отправить.",
         reply_markup=reply_markup
     )
 
 async def handle_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
+
+    if text.strip() in ["📋 Вставить шаблон", "📝 Вставить шаблон"]:
+        await update.message.reply_text(TEMPLATE_MESSAGE)
+        return
 
     # Обработка однострочного шаблона (вставленного через startapp)
     if text.count(":") > 3 and "\n" not in text:
