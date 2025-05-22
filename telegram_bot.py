@@ -1,5 +1,10 @@
 import os
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from urllib.parse import quote
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+)
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -11,6 +16,8 @@ from telegram.ext import (
 from notion import add_entry_to_notion, get_page_data, update_entry_in_notion
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+BOT_USERNAME = "mycbxbot"  # <= замените на username бота без @
+
 if not TELEGRAM_TOKEN:
     raise ValueError("Переменная окружения TELEGRAM_TOKEN не задана")
 
@@ -30,6 +37,23 @@ FIELD_ALIASES = {
 }
 MULTI_FIELDS = {"Region", "Varietal", "Flavor Notes"}
 
+TEMPLATE_MESSAGE = """Name: 
+Rating: 
+Brand: 
+Country: 
+Region: 
+Producer: 
+Altitude: 
+Process: 
+Roast Level: 
+Varietal: 
+Flavor Notes: 
+Roasted: """
+
+def get_draft_template_url():
+    encoded = quote(TEMPLATE_MESSAGE)
+    return f"https://t.me/{BOT_USERNAME}?startapp={encoded}"
+
 user_last_page = {}  # user_id -> page_id
 
 def setup_bot():
@@ -40,10 +64,14 @@ def setup_bot():
     return app
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    buttons = [
+        [InlineKeyboardButton("✏️ Заполнить шаблон", url=get_draft_template_url())]
+    ]
+    reply_markup = InlineKeyboardMarkup(buttons)
+
     await update.message.reply_text(
-        "Привет! Отправь данные в формате:\n\n"
-        "Name: Ethiopia Yirgacheffe\nRating: 88\n...\n"
-        "Для множественных значений используй запятую."
+        "Привет! Ты можешь отправить данные вручную, либо нажать кнопку ниже — и Telegram сразу вставит шаблон в поле ввода.",
+        reply_markup=reply_markup
     )
 
 async def handle_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -79,7 +107,6 @@ async def handle_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("⚠️ Не удалось распознать ни одно поле.")
             return
 
-        # проверка: редактирование или новое создание
         if user_id in user_last_page and context.user_data.get("editing", False):
             page_id = user_last_page[user_id]
             update_entry_in_notion(page_id, data)
@@ -88,7 +115,6 @@ async def handle_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             page_id = add_entry_to_notion(data)
             user_last_page[user_id] = page_id
-
             keyboard = InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔁 Редактировать", callback_data="edit_last")]
             ])
@@ -105,7 +131,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     page_id = user_last_page.get(user_id)
 
     if not page_id:
-        await query.message.reply_text("❌ Не удалось найти последнюю запись.")
+        await query.message.reply_text("❌ Не удалось найти запись.")
         return
 
     try:
