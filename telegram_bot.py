@@ -77,6 +77,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
 
+    # Обработка однострочного шаблона (вставленного через startapp)
+    if text.count(":") > 3 and "\n" not in text:
+        for field in FIELD_ALIASES:
+            text = text.replace(f"{field}:", f"\n{field}:")
+        text = text.strip()
+
     if not text or ":" not in text:
         await update.message.reply_text("⚠️ Неверный формат. Используй Поле: значение")
         return
